@@ -1,0 +1,9 @@
+{
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar",
+        "Server\\jar\\commons-lang3-3.13.0.jar",
+        "Client\\jar\\rsyntaxtextarea-3.4.0-20231018.031428-1.jar",
+        "Client\\jar\\swingx-1.6.1.jar",
+        "Client\\jar\\TimingFramework-0.55.jar"
+    ]
+}

@@ -4,6 +4,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import Client.ui.ClientUI;
+import Object.Code;
 
 public class client {
 	private Socket socket;
@@ -58,13 +59,11 @@ public class client {
 		}
 	}
 
-	public void send(Object object) {
+	public void send(Code code) {
 		try {
-			if(socket != null) {
-				byte[] bytes = encryption.encryptData(object.toString());
-				this.out.writeObject(bytes);
-				this.out.flush();
-			}
+			byte[] bytes = encryption.encryptData(code);
+			this.out.writeObject(bytes);
+			this.out.flush();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -72,14 +71,12 @@ public class client {
 
 	public Object receive() {
 		try {
-			if (socket != null) {
-				byte[] bytes = (byte[])this.in.readObject();
-				Object object = (Object) encryption.decryptData(bytes);
-				return object;
-			}
+			byte[] bytes = (byte[])this.in.readObject();
+			Object object = (Object) encryption.decryptData(bytes);
+			return object;
 		} catch (Exception e) {
 			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 }

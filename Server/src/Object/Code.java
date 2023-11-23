@@ -5,37 +5,19 @@ import java.io.Serializable;
 public class Code implements Serializable{
     private String source;
     private String language;
-    private String function;
+    private String input;
+
 
     public Code() {
         this.source = "";
         this.language = "";
-        this.function = "";
+        this.input = "";
     }
 
-    public Code(String source, String language, String function) {
+    public Code(String source, String language, String input) {
         this.source = source;
         this.language = language;
-        this.function = function;
-    }
-
-    public Code(String str) {
-        str = str.substring(1, str.length() - 1);
-        String[] delimeterArray = str.split(",", 3);
-        for(int i=0;i<delimeterArray.length;i++){
-            String[] keyValuePair=delimeterArray[i].split(":", 2);
-            String key = keyValuePair[0];
-            String value = keyValuePair[1];
-            if("function".equals(key)){
-                setFunction(value);
-            }
-            else if("language".equals(key)){
-                setLanguage(value);
-            }
-            else if("source".equals(key)){
-                setSource(value);
-            }
-        }
+        this.input = input;
     }
 
     public String getSource() {
@@ -53,18 +35,12 @@ public class Code implements Serializable{
     public void setLanguage(String language) {
         this.language = language;
     }
-
-    public String getFunction() {
-        return function;
+    
+    public String getInput() {
+        return input;
     }
 
-    public void setFunction(String function) {
-        this.function = function;
-    }
-
-    @Override
-    public String toString() {
-        // TODO Auto-generated method stub
-        return "{function:"+this.getFunction()+",language:"+this.getLanguage()+",source:"+this.getSource()+"}";
+    public void setInput(String input) {
+        this.input = input;
     }
 }

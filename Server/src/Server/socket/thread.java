@@ -1,42 +1,47 @@
 package Server.socket;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.security.PublicKey;
+import java.util.LinkedHashMap;
 import java.util.Random;
 
+import org.apache.commons.lang3.SerializationUtils;
 
 import Object.Code;
+import Object.CodeResult;
 
 public class thread implements Runnable {
-    private Socket socket = null;
+	private Socket socket = null;
 	private ObjectInputStream in = null;
 	private ObjectOutputStream out = null;
 	private encryption encryption;
 
-    public thread(Socket socket) {
-        try {
-            this.socket = socket;
-            this.out = new ObjectOutputStream(this.socket.getOutputStream());
-            this.in = new ObjectInputStream(this.socket.getInputStream());
+	public thread(Socket socket) {
+		try {
+			this.socket = socket;
+			this.out = new ObjectOutputStream(this.socket.getOutputStream());
+			this.in = new ObjectInputStream(this.socket.getInputStream());
 			generateKey();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
-    @Override
-    public void run() {
-        handleData();
-    }
+	@Override
+	public void run() {
+		handleData();
+	}
 
-    public void close() {
+	public void close() {
 		try {
 			if (socket != null) {
 				this.in.close();
@@ -48,10 +53,10 @@ public class thread implements Runnable {
 			return;
 		}
 	}
-	
-	public void send(Object object) {
+
+	public void send(CodeResult codeResult) {
 		try {
-			byte[] bytes = encryption.encryptData(object.toString());
+			byte[] bytes = encryption.encryptData(codeResult);
 			this.out.writeObject(bytes);
 			this.out.flush();
 		} catch (java.net.SocketException e) {
@@ -60,15 +65,15 @@ public class thread implements Runnable {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public Object receive() {
 		try {
-			byte[] bytes = (byte[])this.in.readObject();
+			byte[] bytes = (byte[]) this.in.readObject();
 			Object object = (Object) encryption.decryptData(bytes);
 			return object;
 		} catch (java.net.SocketException e) {
 			System.out.println("[Notification] Client: " + this.socket + " lost connection");
-		} catch(Exception e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return null;
@@ -81,26 +86,23 @@ public class thread implements Runnable {
 
 			encryption.setPublicKey(publicKey);
 			encryption.encryptKey();
-		
+
 			this.out.writeObject(encryption.getEncryptedKey());
 			this.out.flush();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public void handleData() {
 		while (this.socket != null) {
 			try {
 				Object object = this.receive();
 				if (object != null) {
-					Code code = new Code(object.toString());
-					if (code.getFunction().equals("execute")) {
-						execute(code.getSource(), code.getLanguage());
-					} else if (code.getFunction().equals("format")) {
-						format(code.getSource(), code.getLanguage());
-					}
-				} else 
+					Code code = (Code) object;
+					CodeResult codeResult = execute(code);
+					send(codeResult);
+				} else
 					break;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -108,20 +110,22 @@ public class thread implements Runnable {
 			}
 		}
 	}
-	
-	private void execute(String src, String lang) {
+
+	private CodeResult execute(Code code) {
+		CodeResult codeResult = new CodeResult();
 		try {
 			Random rd = new Random();
 			String index = rd.nextInt(100000) + 900000 + "";
 			String filePath = ".\\src\\Server\\temp\\" + index;
-			String command = "";
+			String lang = code.getLanguage() , src = code.getSource();
+			String command = "", result = "", input = code.getInput();
 
 			ProcessBuilder pb = new ProcessBuilder();
 
 			switch (lang) {
 				case "C":
 					String fileExe = filePath + ".exe";
-					filePath += ".c";	
+					filePath += ".c";
 					writeToFile(filePath, src);
 					command = "gcc " + filePath + " -o " + fileExe;
 					pb.command("cmd.exe", "/c", command + " 2>&1");
@@ -133,11 +137,11 @@ public class thread implements Runnable {
 					}
 					int exitedCode = process.waitFor();
 					lines += "\nExited code: " + exitedCode;
-					send(lines);
 					if (exitedCode == 0) {
 						Thread.sleep(1000);
 						pb.command("cmd.exe", "/c", fileExe + " 2>&1");
-					}
+					} else
+						result = lines;
 					break;
 				case "Python":
 					command = ".\\cf\\Compiler\\Python311\\python.exe";
@@ -158,44 +162,65 @@ public class thread implements Runnable {
 					pb.command("cmd.exe", "/c", command + " " + filePath + " 2>&1");
 					break;
 				case "Java":
-					filePath += ".java";	
+					filePath += ".java";
 					writeToFile(filePath, src);
 					command = "javac";
 					pb.command("cmd.exe", "/c", command + " " + filePath);
 					pb.start();
 					Thread.sleep(1000);
-					command = "java"; 
+					command = "java";
 					pb.command("cmd.exe", "/c", command + " " + filePath + " 2>&1");
 					break;
 			}
+
 			Process process = pb.start();
+			BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
 			BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
-			String line = "", lines = "";
+
+			System.out.println(input);
+			bw.write(input, 0, input.length());
+			bw.newLine();
+			bw.flush();
+			bw.close();
+
+			String line = "";
 			while ((line = br.readLine()) != null) {
-				lines += line + "\n";
+				result += line + "\n";
 			}
-			lines += "\nExited code: " + process.waitFor();
-			send(lines);
-		
+
+			int exitedCode = process.waitFor();
+			result += "\nExited code: " + exitedCode;
+			br.close();
+
+			codeResult.setExecResult(result);
+
+			if (exitedCode == 0)
+				codeResult.setFormattedSrc(format(code));
+			else
+				codeResult.setFormattedSrc(src);
+
+			return codeResult;
 		} catch (Exception e) {
 			e.printStackTrace();
+			return codeResult;
 		}
 	}
 
-	private void format(String src, String lang) {
+	private String format(Code code) {
 		try {
 			Random rd = new Random();
 			String index = rd.nextInt(100000) + 10000 + "";
 			String filePath = ".\\src\\Server\\temp\\" + index;
-			String command = "";
 			ProcessBuilder pb = new ProcessBuilder();
+			String lang = code.getLanguage(), src = code.getSource();
+			String command = "", result = "";
 
 			switch (lang) {
 				case "C":
-					filePath += ".c";	
+					filePath += ".c";
 					writeToFile(filePath, src);
 					command = ".\\cf\\Formatter\\astyle-3.4.10-x64\\astyle.exe";
-					pb.command("cmd.exe", "/c", command + " -H -U -xe -p -f -E -n " + filePath);
+					pb.command("cmd.exe", "/c", command + " -H -U -xe -p -f -E -n -A1 " + filePath);
 					pb.start();
 					break;
 				case "Python":
@@ -216,7 +241,7 @@ public class thread implements Runnable {
 					command = ".\\cf\\Formatter\\astyle-3.4.10-x64\\astyle.exe";
 					filePath += ".js";
 					writeToFile(filePath, src);
-					pb.command("cmd.exe", "/c", command + " -H -U -xe -p -f -E -n " + filePath);
+					pb.command("cmd.exe", "/c", command + " -H -U -xe -p -f -E -n -A1 " + filePath);
 					pb.start();
 					break;
 				case "Java":
@@ -227,13 +252,14 @@ public class thread implements Runnable {
 					pb.start();
 					break;
 			}
-			
+
 			Thread.sleep(2000);
-			String result = readFromFile(filePath);
-			send(result);
-		
+			result = readFromFile(filePath);
+			return result;
+
 		} catch (Exception e) {
 			e.printStackTrace();
+			return "";
 		}
 	}
 
@@ -254,7 +280,7 @@ public class thread implements Runnable {
 		try {
 			BufferedReader fileReader = new BufferedReader(new InputStreamReader(new FileInputStream(filePath)));
 			String line = "";
-			while ((line = fileReader.readLine()) != null){
+			while ((line = fileReader.readLine()) != null) {
 				lines += line + "\n";
 			}
 			return lines;

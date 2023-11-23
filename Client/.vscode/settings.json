@@ -5,6 +5,7 @@
         "lib/**/*.jar",
         "jar\\rsyntaxtextarea-3.4.0-20231018.031428-1.jar",
         "jar\\swingx-1.6.1.jar",
-        "jar\\TimingFramework-0.55.jar"
+        "jar\\TimingFramework-0.55.jar",
+        "jar\\commons-lang3-3.13.0.jar"
     ]
 }

@@ -16,9 +16,12 @@ import org.fife.ui.rtextarea.RTextScrollPane;
 
 import Client.socket.client;
 import Object.Code;
+import Object.CodeResult;
 
 import java.awt.TextArea;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,16 +36,19 @@ import java.awt.Font;
 import java.awt.HeadlessException;
 import java.awt.Image;
 import java.awt.Color;
+import java.awt.Cursor;
 
 public class ClientUI {
 
 	private JFrame frame;
 	private JPanel contentPane;
 	private RSyntaxTextArea textArea_Src;
+	private TextArea textArea_Input;
 	private TextArea textArea_Result;
 	private ComboSuggestion cb;
 	private JLayeredPane layeredPane;
 	private LoadingScreen loadingScreen;
+	private JLabel connectionStatus;
 
 	private client clientSocket = null;
 
@@ -77,14 +83,14 @@ public class ClientUI {
 		frame.setTitle("Code Editor");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setLayout(null);
-		frame.setBounds(100, 100, 1076, 681);
+		frame.setBounds(100, 100, 1270, 781);
 		frame.setLocationRelativeTo(null);
 
 		contentPane = new JPanel();
 		contentPane.setLayout(null);
-		contentPane.setBackground(new Color(230, 230, 230));
+		contentPane.setBackground(new Color(240, 240, 240));
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		contentPane.setBounds(0, 0, 1076, 681);
+		contentPane.setBounds(0, 0, 1276, 781);
 
 		layeredPane = new JLayeredPane();
 		layeredPane.setLayout(null);
@@ -97,13 +103,18 @@ public class ClientUI {
 		textArea_Src.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_C);
 		textArea_Src.setCodeFoldingEnabled(true);
 		RTextScrollPane sp = new RTextScrollPane(textArea_Src);
-		sp.setBounds(10, 59, 1040, 387);
+		sp.setBounds(10, 59, 900, 487);
 		contentPane.add(sp);
 
+		textArea_Input = new TextArea();
+		textArea_Input.setFont(new Font("Dialog", Font.ITALIC, 12));
+		textArea_Input.setBounds(920, 59, 320, 487);
+		contentPane.add(textArea_Input);
+
 		textArea_Result = new TextArea();
-		textArea_Result.setFont(new Font("Dialog", Font.PLAIN, 14));
-		textArea_Result.setBounds(10, 450, 1040, 180);
-		textArea_Result.setEditable(true);
+		textArea_Result.setFont(new Font("Dialog", Font.ITALIC, 14));
+		textArea_Result.setBounds(10, 550, 1230, 180);
+		textArea_Result.setEditable(false);
 		contentPane.add(textArea_Result);
 
 		// JPanel statusPanel = new JPanel();
@@ -116,34 +127,34 @@ public class ClientUI {
 		// statusPanel.add(statusLabel);
 		// contentPane.add(statusPanel);
 
-		Button btnExecute = new Button("Execute");
-		btnExecute.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		btnExecute.setIcon(new ImageIcon(new ImageIcon("src\\Client\\ui\\logo\\refresh.png")
+		Button btnRun = new Button("Run");
+		btnRun.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		btnRun.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\refresh.png")
 				.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
-		btnExecute.addActionListener(new ActionListener() {
+		btnRun.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				execute();
+				run();
 			}
 		});
-		btnExecute.setBounds(790, 18, 125, 30);
-		contentPane.add(btnExecute);
+		btnRun.setBounds(925, 18, 125, 30);
+		contentPane.add(btnRun);
 
-		Button btnFormat = new Button("Format");
-		btnFormat.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		btnFormat.setIcon(new ImageIcon(new ImageIcon("src\\Client\\ui\\logo\\edit.png")
-				.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
-		btnFormat.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				format();
-			}
-		});
+		// Button btnFormat = new Button("Format");
+		// btnFormat.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		// btnFormat.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\edit.png")
+		// 		.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
+		// btnFormat.addActionListener(new ActionListener() {
+		// 	public void actionPerformed(ActionEvent e) {
+		// 		format();
+		// 	}
+		// });
 
-		btnFormat.setBounds(650, 18, 125, 30);
-		contentPane.add(btnFormat);
+		// btnFormat.setBounds(790, 18, 125, 30);
+		// contentPane.add(btnFormat);
 
 		Button btnUpload = new Button("Upload");
 		btnUpload.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		btnUpload.setIcon(new ImageIcon(new ImageIcon("src\\Client\\ui\\logo\\upload.png")
+		btnUpload.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\upload.png")
 				.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
 		btnUpload.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -161,7 +172,7 @@ public class ClientUI {
 			}
 		});
 
-		btnUpload.setBounds(500, 18, 125, 30);
+		btnUpload.setBounds(650, 18, 125, 30);
 		contentPane.add(btnUpload);
 
 		cb = new ComboSuggestion();
@@ -183,11 +194,42 @@ public class ClientUI {
 
 			}
 		});
-		cb.setLocation(925, 18);
+		cb.setLocation(10, 18);
 		cb.setModel(new DefaultComboBoxModel(new String[] { "C", "Python", "Java", "Javascript", "PHP" }));
 		cb.setEditable(false);
 		cb.setSize(125, 30);
 		contentPane.add(cb);
+
+		connectionStatus = new JLabel();
+		connectionStatus.setBounds(510, 18, 125, 30);
+		contentPane.add(connectionStatus);
+		connectionStatus.addMouseListener(new MouseListener() {
+			
+
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if(!clientSocket.connect()) {
+					connectServer();
+				}
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {
+			}
+
+			@Override
+			public void mouseReleased(MouseEvent e) {
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e) {
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+			}
+
+		});
 
 		layeredPane.add(contentPane, 1, 0);
 		layeredPane.add(loadingScreen, 2, 0);
@@ -215,12 +257,18 @@ public class ClientUI {
 				try {
 					if (get()) {
 						Notification panel = new Notification(frame, Notification.Type.SUCCESS,
-								Notification.Location.TOP_LEFT, "Connected to server");
+								Notification.Location.TOP_CENTER, "Connected to server");
 						panel.showNotification();
+						connectionStatus.setText("<HTML><U>Connected</U></HTML>");
+						connectionStatus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+						connectionStatus.setForeground(Color.green);
 					} else {
 						Notification panel = new Notification(frame, Notification.Type.WARNING,
-								Notification.Location.TOP_LEFT, "Unable to connect to server");
+								Notification.Location.TOP_CENTER, "Unable to connect to server");
 						panel.showNotification();
+						connectionStatus.setText("<HTML><U>Disconnected</U></HTML>");
+						connectionStatus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+						connectionStatus.setForeground(Color.red);
 					}
 				} catch (HeadlessException | InterruptedException | ExecutionException e) {
 					// TODO Auto-generated catch block
@@ -232,7 +280,7 @@ public class ClientUI {
 		swingWorker.execute();
 	}
 
-	private void execute() {
+	private void run() {
 		if (clientSocket.connect()) {
 			loadingScreen.setVisible(true);
 			SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
@@ -241,72 +289,69 @@ public class ClientUI {
 				@Override
 				protected Boolean doInBackground() throws Exception {
 					code = new Code();
-					code.setFunction("execute");
 					code.setLanguage((String) cb.getSelectedItem());
-					System.out.println(textArea_Src.getText());
 					code.setSource(textArea_Src.getText());
+					code.setInput(textArea_Input.getText());
 					clientSocket.send(code);
-					String result = (String) clientSocket.receive();
-					textArea_Result.setText(result);
+					CodeResult result = (CodeResult) clientSocket.receive();
+					textArea_Src.setText(result.getFormattedSrc());
+					textArea_Result.setText(result.getExecResult());
 					return true;
 				}
 
 				protected void done() {
 					try {
-						if (get()) {
-							loadingScreen.setVisible(false);
-						}
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					} catch (ExecutionException e) {
+						loadingScreen.setVisible(false);
+					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
 			};
 			swingWorker.execute();
 		} else {
-			Notification panel = new Notification(frame, Notification.Type.WARNING, Notification.Location.TOP_LEFT,
+			Notification panel = new Notification(
+				frame, Notification.Type.WARNING, Notification.Location.TOP_CENTER,
 					"Unable to connect to server");
 			panel.showNotification();
 		}
 
 	}
 
-	private void format() {
-		if (clientSocket.connect()) {
-			loadingScreen.setVisible(true);
-			SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
-				Code code;
+	// private void format() {
+	// 	if (clientSocket.connect()) {
+	// 		loadingScreen.setVisible(true);
+	// 		SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
+	// 			Code code;
 
-				@Override
-				protected Boolean doInBackground() throws Exception {
-					code = new Code();
-					code.setFunction("format");
-					code.setLanguage((String) cb.getSelectedItem());
-					code.setSource(textArea_Src.getText());
-					clientSocket.send(code);
-					String result = (String) clientSocket.receive();
-					textArea_Src.setText(result);
-					return true;
-				}
+	// 			@Override
+	// 			protected Boolean doInBackground() throws Exception {
+	// 				code = new Code();
+	// 				code.setLanguage((String) cb.getSelectedItem());
+	// 				code.setSource(textArea_Src.getText());
+	// 				clientSocket.send(code);
+	// 				String result = (String) clientSocket.receive();
+	// 				textArea_Src.setText(result);
+	// 				return true;
+	// 			}
 
-				protected void done() {
-					try {
-						if (get()) {
-							loadingScreen.setVisible(false);
-						}
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					} catch (ExecutionException e) {
-						e.printStackTrace();
-					}
-				}
-			};
-			swingWorker.execute();
-		} else {
-			Notification panel = new Notification(frame, Notification.Type.WARNING, Notification.Location.TOP_LEFT,
-					"Unable to connect to server");
-			panel.showNotification();
-		}
-	}
+	// 			protected void done() {
+	// 				try {
+	// 					if (get()) {
+	// 						loadingScreen.setVisible(false);
+	// 					}
+	// 				} catch (InterruptedException e) {
+	// 					e.printStackTrace();
+	// 				} catch (ExecutionException e) {
+	// 					e.printStackTrace();
+	// 				}
+	// 			}
+	// 		};
+	// 		swingWorker.execute();
+	// 	} else {
+	// 		Notification panel = new Notification(
+	// 			frame, Notification.Type.WARNING, Notification.Location.TOP_CENTER,
+	// 				"Unable to connect to server");
+	// 		panel.showNotification();
+	// 	}
+	// }
 }

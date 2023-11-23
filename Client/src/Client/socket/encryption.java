@@ -1,6 +1,13 @@
 package Client.socket;
 
 import javax.crypto.*;
+
+import org.apache.commons.lang3.SerializationUtils;
+
+import Object.Code;
+
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.*;
 
 public class encryption {
@@ -54,11 +61,11 @@ public class encryption {
         }
     }
 
-    public byte[] encryptData(String text) {
+    public byte[] encryptData(Code code) {
 		try {
 			Cipher aesCipher = Cipher.getInstance("AES");
 			aesCipher.init(Cipher.ENCRYPT_MODE, decryptedKey);
-			byte[] encryptedData = aesCipher.doFinal(text.getBytes());
+			byte[] encryptedData = aesCipher.doFinal(SerializationUtils.serialize(code));
 			return encryptedData;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -66,13 +73,14 @@ public class encryption {
 		return null;
 	}
 	
-	public String decryptData(byte[] encryptedData) {
+	public Object decryptData(byte[] encryptedData) {
 		try {
 			Cipher aesCipher = Cipher.getInstance("AES");
 			aesCipher.init(Cipher.DECRYPT_MODE, decryptedKey);
 			byte[] decryptedData = aesCipher.doFinal(encryptedData);
+            Object object = SerializationUtils.deserialize(decryptedData);
 			
-			return new String(decryptedData);
+			return object;
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
