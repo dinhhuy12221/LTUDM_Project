@@ -57,5 +57,4 @@ public class LoadingScreen extends JLabel{
         setBounds(490,180,80,80);
         setVisible(false);
     }
-
 }

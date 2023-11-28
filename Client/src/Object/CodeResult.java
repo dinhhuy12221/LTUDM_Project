@@ -15,7 +15,7 @@ public class CodeResult implements Serializable{
         this.formattedSrc = formattedSrc;
         this.execResult = execResult;
     }
-
+    
     public String getFormattedSrc() {
         return formattedSrc;
     }

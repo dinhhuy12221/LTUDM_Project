@@ -22,16 +22,32 @@ public class encryption {
 			keyPairGenerator.initialize(2048);
 			keyPair = keyPairGenerator.generateKeyPair();
 			
-			// Generate a random AES key
-			KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-			keyGenerator.init(256);
-			secretKey = keyGenerator.generateKey();
+			// // Generate a random AES key
+			// KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+			// keyGenerator.init(256);
+			// secretKey = keyGenerator.generateKey();
 			
 		} catch (Exception e) {
 			// TODO: handle exception
 			e.printStackTrace();
 		}
 	}
+
+	public KeyPair getKeyPair() {
+        return keyPair;
+    }
+
+    public Key getDecryptedKey() {
+		return decryptedKey;
+	}
+
+	public void setDecryptedKey(Key decryptedKey) {
+		this.decryptedKey = decryptedKey;
+	}
+
+	public void setKeyPair(KeyPair keyPair) {
+        this.keyPair = keyPair;
+    }
 	
 	public SecretKey getSecretKey() {
 		return secretKey;
@@ -39,14 +55,6 @@ public class encryption {
 
 	public void setSecretKey(SecretKey secretKey) {
 		this.secretKey = secretKey;
-	}
-
-	public PublicKey getPublicKey() {
-		return publicKey;
-	}
-
-	public void setPublicKey(PublicKey publicKey) {
-		this.publicKey = publicKey;
 	}
 
 	public byte[] getEncryptedKey() {
@@ -60,8 +68,21 @@ public class encryption {
 	public byte[] encryptData(CodeResult codeResult) {
 		try {
 			Cipher aesCipher = Cipher.getInstance("AES");
-			aesCipher.init(Cipher.ENCRYPT_MODE, secretKey);
+			aesCipher.init(Cipher.ENCRYPT_MODE, decryptedKey);
 			byte[] encryptedData = aesCipher.doFinal(SerializationUtils.serialize(codeResult));
+			return encryptedData;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+	public byte[] encryptData(String str) {
+		try {
+			Cipher aesCipher = Cipher.getInstance("AES");
+			aesCipher.init(Cipher.ENCRYPT_MODE, decryptedKey);
+			byte[] encryptedData = aesCipher.doFinal(SerializationUtils.serialize(str));
 			return encryptedData;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -72,7 +93,7 @@ public class encryption {
 	public Object decryptData(byte[] encryptedData) {
 		try {
 			Cipher aesCipher = Cipher.getInstance("AES");
-			aesCipher.init(Cipher.DECRYPT_MODE, secretKey);
+			aesCipher.init(Cipher.DECRYPT_MODE, decryptedKey);
 			byte[] decryptedData = aesCipher.doFinal(encryptedData);
 			Object object = SerializationUtils.deserialize(decryptedData);
 			
@@ -81,16 +102,6 @@ public class encryption {
 			e.printStackTrace();
 		}
 		return "";
-	}
-
-	public void encryptKey() {
-		try {
-			Cipher rsaCipher = Cipher.getInstance("RSA");
-			rsaCipher.init(Cipher.WRAP_MODE, publicKey);
-			encryptedKey = rsaCipher.wrap(secretKey);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	public void decryptKey() {

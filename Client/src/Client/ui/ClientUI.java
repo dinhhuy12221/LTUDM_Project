@@ -5,29 +5,42 @@ import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextArea;
+import javax.swing.KeyStroke;
 import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.JTextComponent.KeyBinding;
 
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextAreaUI;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
+import org.w3c.dom.Text;
 
 import Client.socket.client;
 import Object.Code;
 import Object.CodeResult;
 
 import java.awt.TextArea;
+import java.awt.RenderingHints.Key;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.nio.file.Files;
+import java.awt.*;
 import java.util.concurrent.ExecutionException;
 import java.awt.event.ActionEvent;
 
+import javax.swing.BorderFactory;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
@@ -43,14 +56,20 @@ public class ClientUI {
 	private JFrame frame;
 	private JPanel contentPane;
 	private RSyntaxTextArea textArea_Src;
-	private TextArea textArea_Input;
-	private TextArea textArea_Result;
+	private RSyntaxTextArea textArea_Input;
+	private RSyntaxTextArea textArea_Result;
 	private ComboSuggestion cb;
 	private JLayeredPane layeredPane;
 	private LoadingScreen loadingScreen;
+	private Button btnRun;
+	private Button btnSave;
+	private Button btnUpload;
 	private JLabel connectionStatus;
+	
+	private client clientSocket = new client();
 
-	private client clientSocket = null;
+	// private String textResult = "";
+	// private int lengthOfTextResult = 0;
 
 	/**
 	 * Launch the application.
@@ -102,60 +121,123 @@ public class ClientUI {
 		textArea_Src = new RSyntaxTextArea(20, 60);
 		textArea_Src.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_C);
 		textArea_Src.setCodeFoldingEnabled(true);
+		textArea_Src.setFont(new Font("", Font.PLAIN, 15));
 		RTextScrollPane sp = new RTextScrollPane(textArea_Src);
 		sp.setBounds(10, 59, 900, 487);
 		contentPane.add(sp);
 
-		textArea_Input = new TextArea();
-		textArea_Input.setFont(new Font("Dialog", Font.ITALIC, 12));
-		textArea_Input.setBounds(920, 59, 320, 487);
-		contentPane.add(textArea_Input);
+		textArea_Input = new RSyntaxTextArea();
+		textArea_Input.setHighlightCurrentLine(false);
+		textArea_Input.setFont(new Font("Dialog", Font.ITALIC, 15));
+		RTextScrollPane sp1 = new RTextScrollPane(textArea_Input);
+		sp1.setBounds(920, 59, 320, 487);
+		contentPane.add(sp1);
 
-		textArea_Result = new TextArea();
+		textArea_Result = new RSyntaxTextArea();
+		textArea_Result.setHighlightCurrentLine(false);
 		textArea_Result.setFont(new Font("Dialog", Font.ITALIC, 14));
-		textArea_Result.setBounds(10, 550, 1230, 180);
 		textArea_Result.setEditable(false);
-		contentPane.add(textArea_Result);
-
-		// JPanel statusPanel = new JPanel();
-		// statusPanel.setBorder(new BevelBorder(BevelBorder.LOWERED));
-		// statusPanel.setBounds(0, contentPane.getHeight(), contentPane.getWidth(),
-		// 16);
-		// statusPanel.setLayout(new BoxLayout(statusPanel, BoxLayout.X_AXIS));
-		// JLabel statusLabel = new JLabel("status");
-		// statusLabel.setHorizontalAlignment(SwingConstants.LEFT);
-		// statusPanel.add(statusLabel);
-		// contentPane.add(statusPanel);
-
-		Button btnRun = new Button("Run");
-		btnRun.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		btnRun.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\refresh.png")
-				.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
-		btnRun.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				run();
-			}
-		});
-		btnRun.setBounds(925, 18, 125, 30);
-		contentPane.add(btnRun);
-
-		// Button btnFormat = new Button("Format");
-		// btnFormat.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		// btnFormat.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\edit.png")
-		// 		.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
-		// btnFormat.addActionListener(new ActionListener() {
-		// 	public void actionPerformed(ActionEvent e) {
-		// 		format();
+		RTextScrollPane sp2 = new RTextScrollPane(textArea_Result);
+		sp2.setBounds(10, 550, 1230, 180);
+		contentPane.add(sp2);
+		// textArea_Result.setEnabled(false);
+		// SwingWorker swingWorker = new SwingWorker<Void, Void>() {
+		// 	@Override
+		// 	protected Void doInBackground() throws Exception {
+		// 		String line = "";
+		// 		while ((line = (String) clientSocket.receive()) != null) {
+		// 			lengthOfTextResult += line.length();
+		// 			textArea_Result.append(line);
+		// 		}
+		// 		return null;
 		// 	}
+
+		// 	@Override
+		// 	protected void done() {
+				
+		// 	}
+		// };
+
+		// swingWorker.execute();
+		// textArea_Result.addKeyListener(new KeyListener() {
+			
+		// 	@Override
+		// 	public void keyPressed(KeyEvent e) {
+		// 		// TODO Auto-generated method stub
+		// 		try {
+		// 			if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+		// 				textArea_Result.insert("\n", textArea_Result.getText().length());
+		// 				textResult += e.getKeyChar();
+		// 				clientSocket.send(textResult);
+		// 				System.out.println(textResult);
+		// 			} else if (e.getKeyCode() != KeyEvent.VK_BACK_SPACE) {
+		// 				textArea_Result.insert(e.getKeyChar() + "", textArea_Result.getText().length());
+		// 				textResult += e.getKeyChar();
+		// 			} else if (textArea_Result.getCaretPosition() > lengthOfTextResult) { 
+		// 				textArea_Result.replaceRange("",textArea_Result.getCaretPosition()-1, textArea_Result.getCaretPosition());
+		// 			}
+					
+		// 		} catch (IllegalArgumentException | StringIndexOutOfBoundsException ex){
+		// 		} catch(Exception ex) {
+		// 			ex.printStackTrace();
+		// 		}
+		// 	}
+
+		// 	@Override
+		// 	public void keyTyped(KeyEvent e) {}
+		// 	@Override
+		// 	public void keyReleased(KeyEvent e) {}
+
 		// });
 
-		// btnFormat.setBounds(790, 18, 125, 30);
-		// contentPane.add(btnFormat);
+		btnRun = new Button("");
+		btnRun.setColor(new Color(66, 135, 245));
+		btnRun.setColorOver(new Color(66, 135, 245));
+		btnRun.setColorClick(new Color(66, 135, 245));
+		btnRun.setBorderColor(new Color(66, 135, 245));
+		btnRun.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		btnRun.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\icons8-video-48.png")
+				.getImage().getScaledInstance(16, 16, Image.SCALE_SMOOTH)));
+		btnRun.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		btnRun.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				run();	
+			}
+		});
+		btnRun.setBounds(630, 30, 80, 25);
+		contentPane.add(btnRun);
 
-		Button btnUpload = new Button("Upload");
+		btnSave = new Button("Save");
+		btnSave.setColor(new Color(66, 135, 245));
+		btnSave.setColorOver(new Color(66, 135, 245));
+		btnSave.setColorClick(new Color(66, 135, 245));
+		btnSave.setBorderColor(new Color(66, 135, 245));
+		btnSave.setFont(new Font("Tahoma", Font.PLAIN, 13));
+		btnSave.setForeground(Color.white);
+		btnSave.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		// btnSave.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\stop-button.png")
+		// 		.getImage().getScaledInstance(16, 16, Image.SCALE_SMOOTH)));
+		btnSave.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// Stop stop = new Stop();
+				// stop.setEnable(true);
+				// clientSocket.send(stop);
+				// btnStop.setEnabled(false);
+			}
+		});
+		btnSave.setBounds(720, 30, 80, 25);
+		contentPane.add(btnSave);
+
+		btnUpload = new Button("Upload");
+		btnUpload.setColor(new Color(66, 135, 245));
+		btnUpload.setColorOver(new Color(66, 135, 245));
+		btnUpload.setColorClick(new Color(66, 135, 245));
+		btnUpload.setBorderColor(new Color(66, 135, 245));
 		btnUpload.setFont(new Font("Tahoma", Font.PLAIN, 13));
-		btnUpload.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\upload.png")
-				.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
+		btnUpload.setForeground(Color.white);
+		btnUpload.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		// btnUpload.setIcon(new ImageIcon(new ImageIcon(".\\src\\Client\\ui\\logo\\upload.png")
+		// 		.getImage().getScaledInstance(12, 12, Image.SCALE_SMOOTH)));
 		btnUpload.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				JFileChooser fileChooser = new JFileChooser();
@@ -171,8 +253,7 @@ public class ClientUI {
 				}
 			}
 		});
-
-		btnUpload.setBounds(650, 18, 125, 30);
+		btnUpload.setBounds(810, 30, 100, 25);
 		contentPane.add(btnUpload);
 
 		cb = new ComboSuggestion();
@@ -194,18 +275,18 @@ public class ClientUI {
 
 			}
 		});
-		cb.setLocation(10, 18);
+		cb.setLocation(10, 25);
 		cb.setModel(new DefaultComboBoxModel(new String[] { "C", "Python", "Java", "Javascript", "PHP" }));
 		cb.setEditable(false);
 		cb.setSize(125, 30);
 		contentPane.add(cb);
 
 		connectionStatus = new JLabel();
-		connectionStatus.setBounds(510, 18, 125, 30);
+		connectionStatus.setBounds(1050, 18, 150, 30);
+		connectionStatus.setFont(new Font("", Font.PLAIN, 13));
+		connectionStatus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		contentPane.add(connectionStatus);
 		connectionStatus.addMouseListener(new MouseListener() {
-			
-
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				if(!clientSocket.connect()) {
@@ -231,6 +312,16 @@ public class ClientUI {
 
 		});
 
+		Timer timer = new Timer(10000, new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// connectionChecking();
+			}
+			
+		});
+		timer.start();
+
 		layeredPane.add(contentPane, 1, 0);
 		layeredPane.add(loadingScreen, 2, 0);
 
@@ -239,35 +330,72 @@ public class ClientUI {
 
 	}
 
+	private void run() {
+		// if (clientSocket.connect()) {
+			SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
+				Code code;
+				@Override
+				protected Boolean doInBackground() throws Exception {
+					code = new Code();
+					code.setLanguage((String) cb.getSelectedItem());
+					code.setSource(textArea_Src.getText());
+					code.setInput(textArea_Input.getText());
+					clientSocket.send(code);
+					CodeResult result = (CodeResult) clientSocket.receive();
+					textArea_Src.setText(result.getFormattedSrc());
+					textArea_Result.setText(result.getExecResult());
+					// String rec = (String) clientSocket.receive();
+					// System.out.println(rec);
+					// textArea_Result.setText(rec);
+					return true;
+				}
+
+				protected void done() {
+					try {
+						loadingScreen.setVisible(false);
+						// textArea_Result.setEnabled(true);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			};
+			swingWorker.execute();
+		// } else {
+		// 	Notification panel = new Notification(
+		// 		frame, Notification.Type.WARNING, Notification.Location.TOP_RIGHT,
+		// 			"Unable to connect to server");
+		// 	panel.showNotification();
+		// }
+
+	}
+	
 	private void connectServer() {
 		JOptionPane optionPane = new JOptionPane();
-		String ipServer = optionPane.showInputDialog(frame, "Server IP");
+		clientSocket.setHostName(optionPane.showInputDialog(frame, "Server IP", clientSocket.getHostName()));
 		loadingScreen.setVisible(true);
 
 		SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
 			@Override
 			protected Boolean doInBackground() throws Exception {
-				clientSocket = new client(ipServer, 1234);
+				clientSocket = new client(clientSocket.getHostName(), 1234);
 				return clientSocket.connect();
 			}
 
 			@Override
 			protected void done() {
-				loadingScreen.setVisible(false);
 				try {
+					loadingScreen.setVisible(false);
 					if (get()) {
 						Notification panel = new Notification(frame, Notification.Type.SUCCESS,
-								Notification.Location.TOP_CENTER, "Connected to server");
+								Notification.Location.TOP_RIGHT, "Connected to server");
 						panel.showNotification();
 						connectionStatus.setText("<HTML><U>Connected</U></HTML>");
-						connectionStatus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 						connectionStatus.setForeground(Color.green);
 					} else {
 						Notification panel = new Notification(frame, Notification.Type.WARNING,
-								Notification.Location.TOP_CENTER, "Unable to connect to server");
+								Notification.Location.TOP_RIGHT, "Unable to connect to server");
 						panel.showNotification();
-						connectionStatus.setText("<HTML><U>Disconnected</U></HTML>");
-						connectionStatus.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+						connectionStatus.setText("<HTML><U>Disconnected.Click here to reconnect</U></HTML>");
 						connectionStatus.setForeground(Color.red);
 					}
 				} catch (HeadlessException | InterruptedException | ExecutionException e) {
@@ -280,78 +408,37 @@ public class ClientUI {
 		swingWorker.execute();
 	}
 
-	private void run() {
-		if (clientSocket.connect()) {
-			loadingScreen.setVisible(true);
-			SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
-				Code code;
+	private void connectionChecking() {
+		SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
+			@Override
+			protected Boolean doInBackground() throws Exception {
+				clientSocket = new client(clientSocket.getHostName(), 1234);
+				return clientSocket.connect();
+			}
 
-				@Override
-				protected Boolean doInBackground() throws Exception {
-					code = new Code();
-					code.setLanguage((String) cb.getSelectedItem());
-					code.setSource(textArea_Src.getText());
-					code.setInput(textArea_Input.getText());
-					clientSocket.send(code);
-					CodeResult result = (CodeResult) clientSocket.receive();
-					textArea_Src.setText(result.getFormattedSrc());
-					textArea_Result.setText(result.getExecResult());
-					return true;
-				}
-
-				protected void done() {
-					try {
-						loadingScreen.setVisible(false);
-					} catch (Exception e) {
-						e.printStackTrace();
+			@Override
+			protected void done() {
+				try {
+					if (get()) {
+						// Notification panel = new Notification(frame, Notification.Type.SUCCESS,
+						// 		Notification.Location.TOP_RIGHT, "Connected to server");
+						// panel.showNotification();
+						connectionStatus.setText("<HTML><U>Connected</U></HTML>");
+						connectionStatus.setForeground(Color.green);
+					} else {
+						// Notification panel = new Notification(frame, Notification.Type.WARNING,
+						// 		Notification.Location.TOP_RIGHT, "Unable to connect to server");
+						// panel.showNotification();
+						connectionStatus.setText("<HTML><U>Disconnected.Click here to reconnect</U></HTML>");
+						connectionStatus.setForeground(Color.red);
 					}
+				} catch (HeadlessException | InterruptedException | ExecutionException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-			};
-			swingWorker.execute();
-		} else {
-			Notification panel = new Notification(
-				frame, Notification.Type.WARNING, Notification.Location.TOP_CENTER,
-					"Unable to connect to server");
-			panel.showNotification();
-		}
+			}
+		};
 
+		swingWorker.execute();
 	}
-
-	// private void format() {
-	// 	if (clientSocket.connect()) {
-	// 		loadingScreen.setVisible(true);
-	// 		SwingWorker swingWorker = new SwingWorker<Boolean, Void>() {
-	// 			Code code;
-
-	// 			@Override
-	// 			protected Boolean doInBackground() throws Exception {
-	// 				code = new Code();
-	// 				code.setLanguage((String) cb.getSelectedItem());
-	// 				code.setSource(textArea_Src.getText());
-	// 				clientSocket.send(code);
-	// 				String result = (String) clientSocket.receive();
-	// 				textArea_Src.setText(result);
-	// 				return true;
-	// 			}
-
-	// 			protected void done() {
-	// 				try {
-	// 					if (get()) {
-	// 						loadingScreen.setVisible(false);
-	// 					}
-	// 				} catch (InterruptedException e) {
-	// 					e.printStackTrace();
-	// 				} catch (ExecutionException e) {
-	// 					e.printStackTrace();
-	// 				}
-	// 			}
-	// 		};
-	// 		swingWorker.execute();
-	// 	} else {
-	// 		Notification panel = new Notification(
-	// 			frame, Notification.Type.WARNING, Notification.Location.TOP_CENTER,
-	// 				"Unable to connect to server");
-	// 		panel.showNotification();
-	// 	}
-	// }
 }
